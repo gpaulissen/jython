@@ -1,0 +1,97 @@
+<project name="jython" default="build" basedir=".">
+
+  <description>
+Build a Jython executable for the Robot Framework Editor RED.
+  </description>
+
+  <target name="init">
+    <property environment="env"/>
+    <property name="bin.dir" location="bin"/>
+    <property name="jre.dir" location="jre"/>
+    <property name="JAVA_HOME" value="${env.JAVA_HOME}"/>
+    <fail message="Property or environment variable JAVA_HOME must be set and valid">
+      <condition>
+        <not>
+          <available file="${JAVA_HOME}" type="dir"/>
+        </not>
+      </condition>
+    </fail>
+    <property name="LAUNCH4J_HOME" value="${env.LAUNCH4J_HOME}"/>    
+    <property name="launch4jc" location="${LAUNCH4J_HOME}/launch4jc.exe"/>
+    <fail message="Executable launch4jc (${launch4jc}) must be available">
+      <condition>
+        <not>
+          <available file="${launch4jc}" type="file"/>
+        </not>
+      </condition>
+    </fail>
+    <property name="PERL_HOME" value="${env.PERL_HOME}"/>    
+    <property name="perl" location="${PERL_HOME}/bin/perl.exe"/>
+    <fail message="Executable perl (${perl}) must be available">
+      <condition>
+        <not>
+          <available file="${perl}" type="file"/>
+        </not>
+      </condition>
+    </fail>
+    <property name="pp" location="${PERL_HOME}/site/bin/pp.bat"/>
+    <fail message="Executable pp (${pp}) must be available">
+      <condition>
+        <not>
+          <available file="${pp}" type="file"/>
+        </not>
+      </condition>
+    </fail>
+    <mkdir dir="${bin.dir}"/>
+    <mkdir dir="${jre.dir}"/>
+    <mkdir dir="${jre.dir}/bin"/>
+    <mkdir dir="${jre.dir}/lib"/>
+  </target>
+
+  <target name="build" description="Build binary files" depends="build-robotframework, build-jython"/>
+
+  <target name="build-robotframework" description="Build robotframework
+                                                   executable" depends="init">
+    <copy todir="${jre.dir}/bin">
+      <fileset dir="${JAVA_HOME}/bin"/>
+    </copy>                                               
+    <copy todir="${jre.dir}/lib">
+      <fileset dir="${JAVA_HOME}/lib"/>
+    </copy>                                               
+    <exec executable="${launch4jc}" failonerror="true">
+      <arg value="robotframework.xml"/>
+    </exec>
+  </target>
+  
+  <target name="build-jython" description="Build Jython executable" depends="init">
+    <!-- check syntax first -->
+    <exec executable="${perl}" failonerror="true">
+      <arg value="-c"/>
+      <arg value="jython.pl"/>
+    </exec>
+    <exec executable="${pp}" failonerror="true">
+      <arg value="-o"/>
+      <arg value="${bin.dir}/jython.exe"/>
+      <arg value="jython.pl"/>
+    </exec>
+  </target>
+
+  <target name="clean" depends="init">
+    <delete dir="${bin.dir}"/>
+    <delete dir="${jre.dir}"/>
+  </target>
+
+  <target name="test" depends="init">
+    <exec executable="${bin.dir}/jython.exe" failonerror="true">
+      <arg value="-J-Dpython.path=C:\jython\Lib\site-packages"/>
+      <arg value="-m"/>
+      <arg value="robot.run"/>
+      <arg value="-h"/>
+    </exec>
+  </target>
+
+  <target name="dist" depends="build,test">
+    <zip destfile="../jython.zip" basedir="."/>  
+  </target>
+  
+</project>
