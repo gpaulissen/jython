@@ -16,7 +16,6 @@
   <icon></icon>
   <classPath>
     <mainClass>org.python.util.jython</mainClass>
-    <cp>%RF_JAR%</cp>
     <cp>%RF_LIB_JARS%</cp>
   </classPath>
   <jre>

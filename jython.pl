@@ -12,12 +12,14 @@ use Cwd qw(cwd);
 sub main();
 sub process_command_line();
 sub create_ini_file();
-sub setup_rf_lib_jars();
+sub setup_rf_classpath();
 sub setup_java();
+sub setup_webdrivers();
 sub bad_option($);
 sub print_help();
 sub restore_streams();
 sub redirect_streams();
+sub add_to_path($$@);
 
 # see jython/src/shell/jython.py
 
@@ -58,16 +60,20 @@ sub main()
 
     create_ini_file()
         if ($launch4j);
-    setup_rf_lib_jars();
+    setup_rf_classpath();
     setup_java()
         if (!$launch4j);
+    setup_webdrivers();
                      
-    print "\n*** robotframework starting now ($program @java_args @jython_args) ***\n";
+    print "\npath: $ENV{'PATH'}\n";
+    print "\nclasspath: $classpath\n";
+    print "\ncommand: $program @java_args @jython_args\n";
+    print "\n*** robotframework starting now ***\n";
 
     restore_streams();
 
     if (system($program, @java_args, @jython_args) != 0) {
-        die "ERROR: system($program, @java_args, @jython_args) failed: $?";
+        die "\nERROR: system($program, @java_args, @jython_args) failed: $?";
     }    
 }
 
@@ -134,9 +140,6 @@ sub create_ini_file()
     die "Should only be used when launch4j is active."
         if (!$launch4j);
     
-    die "Environment variable RF_JAR should be the robotframework jar."
-        unless (grep(/^RF_JAR$/, keys %ENV) && -e $ENV{'RF_JAR'} && $ENV{'RF_JAR'} =~ m/\brobotframework.*\.jar$/);
-    
     # Additional JVM options at runtime
     # When you create a wrapper or launcher all configuration details are
     # compiled into the executable and cannot be changed without recreating it
@@ -170,24 +173,39 @@ sub create_ini_file()
     close $fh;
 }    
 
-sub setup_rf_lib_jars()
+sub setup_rf_classpath()
 {
-    foreach my $env (sort(grep(/^RF_(.+)_JAR$/, keys %ENV))) {
-        my $jar = $ENV{$env};
+    die "Environment variable RF_JAR should be the robotframework jar."
+        unless (grep(/^RF_JAR$/, keys %ENV) && -e $ENV{'RF_JAR'} && $ENV{'RF_JAR'} =~ m/\brobotframework.*\.jar$/);
+    
+    if (-f 'pom.xml') {
+        my $cp_file = File::Spec->catfile('target', 'classpath.txt');
+        
+        my $cmd = "mvn dependency:build-classpath -Dmdep.outputFile=$cp_file";
+    
+        if (system($cmd) != 0) {
+            die "\nERROR: system($cmd) failed: $?";
+        }
 
-        die "Jar file '$jar' does not exist"
-            unless -f $jar;
-        
-        $classpath = ( defined($classpath) ? $classpath . $Config{path_sep} . $jar : $jar );
-    }
-    if ($launch4j) {
-        # robotframework.xml uses user defined classpath containing %RF_JAR% and %RF_LIB_JARS%
-        $ENV{'RF_LIB_JARS'} = ( defined($classpath) ? $classpath : '' );
+        open(my $fh, '<', $cp_file);
+        $classpath = <$fh>;
+        close $fh;
     } else {
-        my $jar = $ENV{'RF_JAR'};
-        
-        $classpath = ( defined($classpath) ? $jar . $Config{path_sep} . $classpath : $jar );
-        push(@java_args, '-cp', $classpath, 'org.python.util.jython');
+        $classpath = $ENV{'RF_JAR'};
+    }
+
+    # Add custom libraries not in the Maven classpath, see Maven Robotframework plugin extraPathDirectories
+    foreach my $env (sort(grep(/^RF_(.+)_JAR$/, keys %ENV))) {
+        add_to_path(\$classpath, 1, $ENV{$env});
+    }
+    
+    if ($launch4j) {
+        # robotframework.xml uses user defined classpath containing %RF_LIB_JARS%
+        $ENV{'RF_LIB_JARS'} = $classpath;
+    } else {
+        # classpath may be too long for the command line so just define CLASSPATH
+        $ENV{'CLASSPATH'} = $classpath;
+        push(@java_args, 'org.python.util.jython');
     }    
 }
 
@@ -201,7 +219,20 @@ sub setup_java()
     
     my $java_bindir = File::Spec->catdir($ENV{'JAVA_HOME'}, 'bin');
 
-    $ENV{'PATH'} = (exists($ENV{'PATH'}) ? $java_bindir . $Config{path_sep} . $ENV{'PATH'} : $java_bindir);
+    add_to_path(\$ENV{'PATH'}, 0, $java_bindir);
+}
+
+sub setup_webdrivers() {
+    return
+        unless (exists $ENV{'KATALON_HOME'});
+    
+    my $KATALON_HOME = $ENV{'KATALON_HOME'};
+
+    add_to_path(\$ENV{'PATH'},
+                File::Spec->catdir($KATALON_HOME, 'configuration', 'resources', 'drivers', 'chromedriver_win32'),
+                File::Spec->catdir($KATALON_HOME, 'configuration', 'resources', 'drivers', 'edgedriver'),
+                File::Spec->catdir($KATALON_HOME, 'configuration', 'resources', 'drivers', 'firefox_win64'),
+                File::Spec->catdir($KATALON_HOME, 'configuration', 'resources', 'drivers', 'iedriver_win64'));
 }
 
 sub bad_option($)
@@ -263,4 +294,19 @@ sub restore_streams()
       close OLDOUT;
       close OLDERR;
   }
+}
+
+sub add_to_path($$@)
+{
+    my ($r_path, $end, @files) = @_;
+
+    $$r_path = ''
+        unless defined($$r_path);
+    
+    foreach my $file (@files) {
+        die "File/directory '$file' does not exist"
+            unless -e $file;
+        
+        $$r_path = ($end ? $$r_path . $Config{path_sep} . $file : $file . $Config{path_sep} . $$r_path);
+    }
 }
