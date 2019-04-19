@@ -25,7 +25,7 @@ sub add_to_path($$@);
 my $program;
 my $log_file;
 my $ini_file;
-my ($classpath, @java_args, $help, @jython_args);
+my ($classpath, @java_args, $help, @jython_args) = (exists($ENV{'CLASSPATH'}) ? $ENV{'CLASSPATH'} : '');
 
 main();
 
@@ -54,8 +54,8 @@ sub main()
     setup_java();
     setup_webdrivers();
                      
-    print "path: $ENV{'PATH'}\n";
-    print "classpath: $classpath\n";
+    print "PATH: $ENV{'PATH'}\n";
+    print "CLASSPATH: $ENV{'CLASSPATH'}\n";
     print "command: $program @java_args @jython_args\n";
     print "\n*** robotframework starting now ***\n";
 
@@ -151,7 +151,9 @@ sub setup_rf_classpath()
     }
     
     # classpath may be too long for the command line so just define CLASSPATH
-    $ENV{'CLASSPATH'} = $classpath;
+    $ENV{'CLASSPATH'} = ''
+        unless(exists($ENV{'CLASSPATH'}));
+    $ENV{'CLASSPATH'} .= $Config{path_sep} . $classpath;
     push(@java_args, 'org.python.util.jython');
 }
 
