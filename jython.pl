@@ -3,7 +3,9 @@
 use strict;
 use warnings;
 use Config;
+use File::Basename;
 use File::Spec;
+use Cwd qw(cwd);
 
 # PROTOTYPES
 
@@ -19,7 +21,7 @@ sub redirect_streams();
 
 # see jython/src/shell/jython.py
 
-my $program = $0;
+my $program;
 my $log_file;
 my $ini_file;
 my ($classpath, @java_args, $help, @jython_args);
@@ -30,8 +32,13 @@ main();
 sub main()
 {
     # robotframework.exe is created by launch4j
-    $program =~ s/^(.*)\bjython(\.exe|\.pl)?$/$1 . 'robotframework'/e;
-    $log_file = $program . '.log';
+    if ($launch4j) {
+        $program = $0;
+        $program =~ s/^(.*)\bjython(\.exe|\.pl)?$/$1 . 'robotframework'/e;
+    } else {
+        $program = 'java';
+    }
+    $log_file = File::Spec->catfile(dirname($0), 'jython.log');
 
     redirect_streams();
 
@@ -49,31 +56,32 @@ sub main()
         print_help();
     }
 
-    print "\n*** robotframework ***\ncommand: $program @jython_args\n";
-    
-    create_ini_file();
+    create_ini_file()
+        if ($launch4j);
     setup_rf_lib_jars();
-    # setup_java();
+    setup_java()
+        if (!$launch4j);
                      
-    print "\n*** robotframework starting now ***\n";
+    print "\n*** robotframework starting now ($program @java_args @jython_args) ***\n";
 
     restore_streams();
 
-    if (system($program, @jython_args) != 0) {
-        die "ERROR: system($program, @jython_args) failed: $?";
+    if (system($program, @java_args, @jython_args) != 0) {
+        die "ERROR: system($program, @java_args, @jython_args) failed: $?";
     }    
 }
 
 sub process_command_line()
 {
     print "*** command line ***\n";
+    print "current directory: ", cwd, "\n";
     print "\$0: $0\n";
-
+    
     my $i;
 
     # some debugging
-    for ($i = 0; $i < @ARGV; ++$i) {
-        my $arg = $ARGV[$i];
+    for ($i = 1; $i <= @ARGV; ++$i) {
+        my $arg = $ARGV[$i-1];
         
         print "argument $i: $arg\n";
     }
@@ -123,6 +131,9 @@ sub process_command_line()
 
 sub create_ini_file()
 {
+    die "Should only be used when launch4j is active."
+        if (!$launch4j);
+    
     die "Environment variable RF_JAR should be the robotframework jar."
         unless (grep(/^RF_JAR$/, keys %ENV) && -e $ENV{'RF_JAR'} && $ENV{'RF_JAR'} =~ m/\brobotframework.*\.jar$/);
     
@@ -154,6 +165,8 @@ sub create_ini_file()
         print $fh "$_\n";
     }
 
+    @java_args = ();
+
     close $fh;
 }    
 
@@ -167,11 +180,22 @@ sub setup_rf_lib_jars()
         
         $classpath = ( defined($classpath) ? $classpath . $Config{path_sep} . $jar : $jar );
     }
-    $ENV{'RF_LIB_JARS'} = ( defined($classpath) ? $classpath : '' );
+    if ($launch4j) {
+        # robotframework.xml uses user defined classpath containing %RF_JAR% and %RF_LIB_JARS%
+        $ENV{'RF_LIB_JARS'} = ( defined($classpath) ? $classpath : '' );
+    } else {
+        my $jar = $ENV{'RF_JAR'};
+        
+        $classpath = ( defined($classpath) ? $jar . $Config{path_sep} . $classpath : $jar );
+        push(@java_args, '-cp', $classpath, 'org.python.util.jython');
+    }    
 }
 
 sub setup_java()
 {
+    die "Should only be used when launch4j is not active."
+        if ($launch4j);
+    
     return
         unless (exists($ENV{'JAVA_HOME'}));
     

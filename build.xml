@@ -42,16 +42,18 @@ Build a Jython executable for the Robot Framework Editor RED.
         </not>
       </condition>
     </fail>
-    <mkdir dir="${bin.dir}"/>
-    <mkdir dir="${jre.dir}"/>
-    <mkdir dir="${jre.dir}/bin"/>
-    <mkdir dir="${jre.dir}/lib"/>
   </target>
 
   <target name="build" description="Build binary files" depends="build-robotframework, build-jython"/>
 
-  <target name="build-robotframework" description="Build robotframework
-                                                   executable" depends="init">
+  <!-- Only build robotframework.exe if environment variable LAUNCH4J is set -->
+  <target name="build-robotframework"
+          description="Build robotframework executable"
+          depends="init"
+          if="env.LAUNCH4J">
+    <mkdir dir="${jre.dir}"/>
+    <mkdir dir="${jre.dir}/bin"/>
+    <mkdir dir="${jre.dir}/lib"/>
     <copy todir="${jre.dir}/bin">
       <fileset dir="${JAVA_HOME}/bin"/>
     </copy>                                               
@@ -69,6 +71,7 @@ Build a Jython executable for the Robot Framework Editor RED.
       <arg value="-c"/>
       <arg value="jython.pl"/>
     </exec>
+    <mkdir dir="${bin.dir}"/>
     <exec executable="${pp}" failonerror="true">
       <arg value="-o"/>
       <arg value="${bin.dir}/jython.exe"/>
@@ -81,7 +84,7 @@ Build a Jython executable for the Robot Framework Editor RED.
     <delete dir="${jre.dir}"/>
   </target>
 
-  <target name="test" depends="init">
+  <target name="test" depends="build">
     <exec executable="${bin.dir}/jython.exe" failonerror="true">
       <arg value="-J-Dpython.path=C:\jython\Lib\site-packages"/>
       <arg value="-m"/>
