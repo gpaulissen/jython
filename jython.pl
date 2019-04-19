@@ -11,7 +11,6 @@ use Cwd qw(cwd);
 
 sub main();
 sub process_command_line();
-sub create_ini_file();
 sub setup_rf_classpath();
 sub setup_java();
 sub setup_webdrivers();
@@ -27,19 +26,12 @@ my $program;
 my $log_file;
 my $ini_file;
 my ($classpath, @java_args, $help, @jython_args);
-my $launch4j = ( exists($ENV{'LAUNCH4J'}) ? 1 : 0 );
 
 main();
 
 sub main()
 {
-    # robotframework.exe is created by launch4j
-    if ($launch4j) {
-        $program = $0;
-        $program =~ s/^(.*)\bjython(\.exe|\.pl)?$/$1 . 'robotframework'/e;
-    } else {
-        $program = 'java';
-    }
+    $program = 'java';
     $log_file = File::Spec->catfile(dirname($0), 'jython.log');
 
     redirect_streams();
@@ -58,16 +50,13 @@ sub main()
         print_help();
     }
 
-    create_ini_file()
-        if ($launch4j);
     setup_rf_classpath();
-    setup_java()
-        if (!$launch4j);
+    setup_java();
     setup_webdrivers();
                      
-    print "\npath: $ENV{'PATH'}\n";
-    print "\nclasspath: $classpath\n";
-    print "\ncommand: $program @java_args @jython_args\n";
+    print "path: $ENV{'PATH'}\n";
+    print "classpath: $classpath\n";
+    print "command: $program @java_args @jython_args\n";
     print "\n*** robotframework starting now ***\n";
 
     restore_streams();
@@ -135,44 +124,6 @@ sub process_command_line()
     }
 }
 
-sub create_ini_file()
-{
-    die "Should only be used when launch4j is active."
-        if (!$launch4j);
-    
-    # Additional JVM options at runtime
-    # When you create a wrapper or launcher all configuration details are
-    # compiled into the executable and cannot be changed without recreating it
-    # or hacking with a resource editor. Launch4j 2.1.2 introduces a new
-    # feature that allows to pass additional JVM options at runtime from an
-    # .l4j.ini file. Now you can specify the options in the configuration
-    # file, ini file or in both, but you cannot override them. The ini file's
-    # name must correspond to the executable's (myapp.exe :
-    # myapp.l4j.ini). The arguments should be separated with spaces or new
-    # lines, environment variable expansion is supported, for example:
-    #
-    # # Launch4j runtime config
-    # -Dswing.aatext=true
-    # -Dsomevar="%SOMEVAR%"
-    # -Xms16m
-        
-    my $ini_file = $program . ".l4j.ini";
-
-    open(my $fh, '>', $ini_file);
-
-    print "launch4j runtime settings: $ini_file\n";    
-
-    print $fh "# Launch4j runtime config\n";
-    
-    foreach (@java_args) {
-        print $fh "$_\n";
-    }
-
-    @java_args = ();
-
-    close $fh;
-}    
-
 sub setup_rf_classpath()
 {
     die "Environment variable RF_JAR should be the robotframework jar."
@@ -199,21 +150,13 @@ sub setup_rf_classpath()
         add_to_path(\$classpath, 1, $ENV{$env});
     }
     
-    if ($launch4j) {
-        # robotframework.xml uses user defined classpath containing %RF_LIB_JARS%
-        $ENV{'RF_LIB_JARS'} = $classpath;
-    } else {
-        # classpath may be too long for the command line so just define CLASSPATH
-        $ENV{'CLASSPATH'} = $classpath;
-        push(@java_args, 'org.python.util.jython');
-    }    
+    # classpath may be too long for the command line so just define CLASSPATH
+    $ENV{'CLASSPATH'} = $classpath;
+    push(@java_args, 'org.python.util.jython');
 }
 
 sub setup_java()
 {
-    die "Should only be used when launch4j is not active."
-        if ($launch4j);
-    
     return
         unless (exists($ENV{'JAVA_HOME'}));
     

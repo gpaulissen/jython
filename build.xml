@@ -7,21 +7,11 @@ Build a Jython executable for the Robot Framework Editor RED.
   <target name="init">
     <property environment="env"/>
     <property name="bin.dir" location="bin"/>
-    <property name="jre.dir" location="jre"/>
     <property name="JAVA_HOME" value="${env.JAVA_HOME}"/>
     <fail message="Property or environment variable JAVA_HOME must be set and valid">
       <condition>
         <not>
           <available file="${JAVA_HOME}" type="dir"/>
-        </not>
-      </condition>
-    </fail>
-    <property name="LAUNCH4J_HOME" value="${env.LAUNCH4J_HOME}"/>    
-    <property name="launch4jc" location="${LAUNCH4J_HOME}/launch4jc.exe"/>
-    <fail message="Executable launch4jc (${launch4jc}) must be available">
-      <condition>
-        <not>
-          <available file="${launch4jc}" type="file"/>
         </not>
       </condition>
     </fail>
@@ -44,28 +34,7 @@ Build a Jython executable for the Robot Framework Editor RED.
     </fail>
   </target>
 
-  <target name="build" description="Build binary files" depends="build-robotframework, build-jython"/>
-
-  <!-- Only build robotframework.exe if environment variable LAUNCH4J is set -->
-  <target name="build-robotframework"
-          description="Build robotframework executable"
-          depends="init"
-          if="env.LAUNCH4J">
-    <mkdir dir="${jre.dir}"/>
-    <mkdir dir="${jre.dir}/bin"/>
-    <mkdir dir="${jre.dir}/lib"/>
-    <copy todir="${jre.dir}/bin">
-      <fileset dir="${JAVA_HOME}/bin"/>
-    </copy>                                               
-    <copy todir="${jre.dir}/lib">
-      <fileset dir="${JAVA_HOME}/lib"/>
-    </copy>                                               
-    <exec executable="${launch4jc}" failonerror="true">
-      <arg value="robotframework.xml"/>
-    </exec>
-  </target>
-  
-  <target name="build-jython" description="Build Jython executable" depends="init">
+  <target name="build" description="Build Jython executable" depends="init">
     <!-- check syntax first -->
     <exec executable="${perl}" failonerror="true">
       <arg value="-c"/>
@@ -81,16 +50,37 @@ Build a Jython executable for the Robot Framework Editor RED.
 
   <target name="clean" depends="init">
     <delete dir="${bin.dir}"/>
-    <delete dir="${jre.dir}"/>
   </target>
 
-  <target name="test" depends="build">
-    <exec executable="${bin.dir}/jython.exe" failonerror="true">
+  <target name="test" depends="init">
+    <exec executable="${bin.dir}/jython.exe"
+          failonerror="false"
+          resultproperty="result"
+          outputproperty="output">
       <arg value="-J-Dpython.path=C:\jython\Lib\site-packages"/>
       <arg value="-m"/>
       <arg value="robot.run"/>
       <arg value="-h"/>
     </exec>
+
+    <!-- Do not print the last line (ERROR: ) -->
+    <loadresource property="output.no.error">
+      <propertyresource name="output"/>
+      <filterchain>
+        <linecontains negate="true">
+          <contains value="ERROR: system(java"/>
+        </linecontains>
+      </filterchain>
+    </loadresource>
+    <echo>${output.no.error}</echo>
+    
+    <fail message="Jython help should return code 25">
+      <condition>
+        <not>
+          <equals arg1="${result}" arg2="25"/>
+        </not>
+      </condition>
+    </fail>
   </target>
 
   <target name="dist" depends="build,test">
