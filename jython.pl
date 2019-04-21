@@ -36,30 +36,37 @@ sub main()
 
     redirect_streams();
 
-    $| = 1; # autoflush
+    eval {
+	$| = 1; # autoflush
     
-    print "# robotframework runtime log\n";
+	print "# robotframework runtime log\n";
     
-    my $timestamp = localtime(time);
+	my $timestamp = localtime(time);
 
-    print $timestamp, "\n\n";
+	print $timestamp, "\n\n";
     
-    process_command_line();
+	process_command_line();
 
-    if (defined($help)) {
-        print_help();
-    }
+	if (defined($help)) {
+	    print_help();
+	}
 
-    setup_rf_classpath();
-    setup_java();
-    setup_webdrivers();
+	setup_rf_classpath();
+	setup_java();
+	setup_webdrivers();
                      
-    print "PATH: $ENV{'PATH'}\n";
-    print "CLASSPATH: $ENV{'CLASSPATH'}\n";
-    print "command: $program @java_args @jython_args\n";
-    print "\n*** robotframework starting now ***\n";
-
+	print "PATH: $ENV{'PATH'}\n";
+	print "CLASSPATH: $ENV{'CLASSPATH'}\n";
+	print "command: $program @java_args @jython_args\n";
+	print "\n*** robotframework starting now ***\n";
+    };
+    
     restore_streams();
+    
+    if ($@) {
+	die $@;
+    }
+	
 
     if (system($program, @java_args, @jython_args) != 0) {
         die "\nERROR: system($program, @java_args, @jython_args) failed: $?";

@@ -4,7 +4,9 @@ Setup of Jython for RED, the Robot Framework editor for Eclipse
 
 When you use RED, you can use Python with Robotframework and all its installed libraries (Selenium for instance) to launch tests. However, if you use Maven and thus the Maven Robotframework plugin, you risk to use a different Robotframework version with RED than you use with Maven. Plus, the Python variant in RED cannot use Java libraries like the Maven variant does (which is based on Jython). You may use Jython of course but the last versions 2.7.0 and 2.7.1 did not run well on my Windows 7 laptop due to Pip and DLL problems. And Jython seems to be not so well supported as Python.
 
-But there seemed to be a solution: [http://nokia.github.io/RED/help/user\_guide/tools\_integration/maven.html](http://nokia.github.io/RED/help/user_guide/tools_integration/maven.html) that describes a way to use the same Robotframework jar as Maven does. In that solution the launch4j program is used to create a jython.exe based on the Robotframework Jar (which includes Jython as well). There are a few snags however as I discovered when I tried to use it.
+But there seemed to be a solution: [http://nokia.github.io/RED/help/user\_guide/tools\_integration/maven.html](http://nokia.github.io/RED/help/user_guide/tools_integration/maven.html) that describes a way to use the same Robotframework jar as Maven does. In that solution the launch4j program is used to create a Jython executable based on the Robotframework Jar (which includes Jython as well). There are a few snags however as I discovered when I tried to use it.
+
+This Blog is written for a Windows environment, but it should also work on a Unix like environment.
 
 # Problems encountered
 
@@ -14,7 +16,7 @@ First, you have to hard code your Jar libraries as Java classpath entries into t
 
 ## Jython arguments
 
-The second problem was that RED launches that generated Jython program with arguments not recognized by the robotframework.jar (for instance -J-cp &lt;classpath&gt;) or with arguments just applicable for a Java interpreter like -Dvar=value. And the robotframework.jar invoked by this generated jython.exe does not recognize these arguments.
+The second problem was that RED launches that generated Jython program with arguments not recognized by the robotframework.jar (for instance -J-cp &lt;classpath&gt;) or with arguments just applicable for a Java interpreter like -Dvar=value. And the robotframework.jar invoked by this generated Jython executable does not recognize these arguments.
 
 ## Java version
 
@@ -26,7 +28,7 @@ So what to do?
 
 The first and second problem are actually environment problems. I needed another program to setup an environment (for instance set environment variables, determine the Maven classpath and change the command line) before launching the robotframework.jar with arguments it recognizes. My old friend, script language Perl, came to my rescue. The Windows variant Strawberry Perl allows you to create executables based on Perl scripts using the Perl CPAN module Par::packer.
 
-So the idea is to create an executable named jython.exe that is called from the Eclipse RED editor and that sets up the environment before launching java with the robotframework.jar.
+So the idea is to create an executable named Jython executable that is called from the Eclipse RED editor and that sets up the environment before launching java with the robotframework.jar.
 
 All the build steps must be automated as well of course and what is more easy to use than good old Ant? I really have no idea,  🙂
 
@@ -54,11 +56,11 @@ Also define a shortcut on your Desktop with C:\Strawberry\portableshell.bat as t
 
 ### Module PAR::Packer
 
-Use the shortcut to start a portable Perl shell. For the rest of this document this will be displayed as
+Use the shortcut to start a portable Perl shell. For the rest of this document this will be displayed as:
 
 DOS&gt;
 
-Download PAR::Packer from the CPAN archives:
+Install PAR::Packer from the CPAN archives:
 
 DOS&gt; cpan PAR::Packer
 
@@ -76,6 +78,14 @@ DOS&gt; dir/s/b c:\ant.bat
 
 Add the Ant bin directory to environment variable PATH.
 
+## Maven
+
+Just download it from the Apache site or use one already on the system:
+
+DOS&gt; dir/s/b c:\mvn.bat
+
+Add the Ant bin directory to environment variable PATH.
+
 ## Java
 
 You need a Java 1.8 or higher to be installed somewhere and let the environment variable JAVA\_HOME point to that directory.
@@ -84,12 +94,10 @@ You need a Java 1.8 or higher to be installed somewhere and let the environment 
 
 You will find these files in the source directory:
 
-- build.xml, an Ant build file
-- jython.pl, a Perl script to setup the environment for the robotframework jar
+- build.xml - an Ant build file
+- jython.pl - a Perl script to setup the environment for the robotframework jar
 
 This will create and test the executable:
-
-DOS&gt; pushd c:\jython
 
 DOS&gt; ant build test
 
@@ -106,30 +114,30 @@ Before we can run the Jython executable we need to define the Robot framework Ja
 
 ## Robot framework Java libraries
 
-The Perl executable (jython.exe) uses environment variable RF\_JAR and all environment variables named RF\_\*\_JAR to setup the environment variable CLASSPATH.
+The Perl Jython executable uses environment variable RF\_JAR and all environment variables named RF\_\*\_JAR to setup the environment variable CLASSPATH.
 
-You need to run at least once an automated test with Maven in order to get all the libraries in the %USERPROFILE%\.m2\repository directory.
+You need to run at least once an automated test with Maven in order to get all the libraries in the %USERPROFILE%\\.m2\repository directory.
 
 In my case I needed these Java libraries to set via environment variables to run the automated tests in RED:
 
-RF\_JAR=C:\Users\T427377\.m2\repository\org\robotframework\robotframework\3.0.4\robotframework-3.0.4.jar
+RF\_JAR=%USERPROFILE%\\.m2\repository\org\robotframework\robotframework\3.0.4\robotframework-3.0.4.jar
 
-RF\_JMSLIBRARY\_JAR=C:\Users\T427377\git\ics-VCCUSTOM-422\icsIntegrationTest\src\test\resources\robotframework\libraries\robotframework-jmslibrary-1.0.0.jar
+RF\_JMSLIBRARY\_JAR=%USERPROFILE%\git\ics-VCCUSTOM-422\icsIntegrationTest\src\test\resources\robotframework\libraries\robotframework-jmslibrary-1.0.0.jar
+
+## Selenium webdrivers
+
+The easiest way to setup Selenium webdrivers is to install Katalon Studio and then to set environment variable KATALON_HOME pointing to the installation directory. Then the directories of the Katalon webdrivers will be added to your PATH by the Jython executable.
 
 ## RED
 
 Follow the instructions on [https://github.com/nokia/RED](https://github.com/nokia/RED) to install RED in Eclipse if needed.
 
-I added [http://master.dl.sourceforge.net/project/red-robot-editor/repository](http://master.dl.sourceforge.net/project/red-robot-editor/repository) to the install sites to manage.
-
-Next install RED.
-
-You may encounter a security warning about unsigned content. I accepted anyway.
+You may encounter a security warning about unsigned content that I accepted anyway.
 
 At the end, just click &quot;Restart Now&quot;:
 
 When everything is ready, you will have a Robot perspective.
 
-Go to Window -&gt; Preferences -&gt; Robot Framework -&gt; Installed frameworks and let Eclipse discover all the frameworks (normally that starts automatically). Remove all frameworks but the one framework having as Path c:\jython\bin.
+Go to Window -&gt; Preferences -&gt; Robot Framework -&gt; Installed frameworks and let Eclipse discover all the frameworks (normally that starts automatically). Remove all frameworks but the one framework having as Path c:\jython\bin assuming you installed the sources into c:\jython.
 
 Apply and Close and you are ready!
