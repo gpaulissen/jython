@@ -8,29 +8,29 @@ Build a Jython executable for the Robot Framework Editor RED.
     <property environment="env"/>
     <property name="bin.dir" location="bin"/>
     <condition property="exe.suffix"
-	       value=".exe"
-	       else="">
+         value=".exe"
+         else="">
       <os family="windows"/>
     </condition>
     <condition property="jython.help.return.code"
-	       value="25"
-	       else="29">
+         value="25"
+         else="29">
       <os family="windows"/>
     </condition>
     <condition property="perl"
-	       value="${env.PERL_HOME}/bin/perl${exe.suffix}"
-	       else="perl">
+         value="${env.PERL_HOME}/bin/perl${exe.suffix}"
+         else="perl">
       <and>
-	<isset property="env.PERL_HOME"/>
-	<available file="${env.PERL_HOME}/bin/perl${exe.suffix}" type="file"/>
+  <isset property="env.PERL_HOME"/>
+  <available file="${env.PERL_HOME}/bin/perl${exe.suffix}" type="file"/>
       </and>
     </condition>
     <condition property="pp"
-	       value="${env.PERL_HOME}/site/bin/pp.bat"
-	       else="pp">
+         value="${env.PERL_HOME}/site/bin/pp.bat"
+         else="pp">
       <and>
-	<isset property="env.PERL_HOME"/>
-	<available file="${env.PERL_HOME}/site/bin/pp.bat" type="file"/>
+  <isset property="env.PERL_HOME"/>
+  <available file="${env.PERL_HOME}/site/bin/pp.bat" type="file"/>
       </and>
     </condition>
   </target>
@@ -54,30 +54,51 @@ Build a Jython executable for the Robot Framework Editor RED.
   </target>
 
   <target name="test" depends="init">
+    <echo>*** Test 1 ***</echo>
     <exec executable="${bin.dir}/jython${exe.suffix}"
           failonerror="false"
-          resultproperty="result"
-          outputproperty="output">
+          resultproperty="result1"
+          outputproperty="output1">
+      <arg value="-m"/>
+      <arg value="robot.run"/>
+      <arg value="-h"/>
+      <env key="RF_JAR" value=""/>
+    </exec>
+    <echo>${output1}</echo>
+    
+    <fail message="Jython with RF_JAR not well defined should return code 1 but returned ${result1}">
+      <condition>
+        <not>
+          <equals arg1="${result1}" arg2="1"/>
+        </not>
+      </condition>
+    </fail>
+
+    <echo>*** Test 2 ***</echo>
+    <exec executable="${bin.dir}/jython${exe.suffix}"
+          failonerror="false"
+          resultproperty="result2"
+          outputproperty="output2">
       <arg value="-m"/>
       <arg value="robot.run"/>
       <arg value="-h"/>
     </exec>
 
     <!-- Do not print the last line (ERROR: ) -->
-    <loadresource property="output.no.error">
-      <propertyresource name="output"/>
+    <loadresource property="output2.no.error">
+      <propertyresource name="output2"/>
       <filterchain>
         <linecontains negate="true">
           <contains value="ERROR: system(java"/>
         </linecontains>
       </filterchain>
     </loadresource>
-    <echo>${output.no.error}</echo>
+    <echo>${output2.no.error}</echo>
     
-    <fail message="Jython help should return code ${jython.help.return.code} but returned ${result}">
+    <fail message="Jython help should return code ${jython.help.return.code} but returned ${result2}">
       <condition>
         <not>
-          <equals arg1="${result}" arg2="${jython.help.return.code}"/>
+          <equals arg1="${result2}" arg2="${jython.help.return.code}"/>
         </not>
       </condition>
     </fail>

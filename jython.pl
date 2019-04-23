@@ -25,7 +25,7 @@ sub add_to_path($$@);
 my $program;
 my $log_file;
 my $ini_file;
-my ($classpath, @java_args, $help, @jython_args) = (exists($ENV{'CLASSPATH'}) ? $ENV{'CLASSPATH'} : '');
+my ($classpath, @java_props, @java_args, $help, @jython_args) = (exists($ENV{'CLASSPATH'}) ? $ENV{'CLASSPATH'} : '');
 
 main();
 
@@ -34,42 +34,44 @@ sub main()
     $program = 'java';
     $log_file = File::Spec->catfile(dirname($0), 'jython.log');
 
+    warn "robotframework runtime log: $log_file\n";
+    
     redirect_streams();
 
     eval {
-	$| = 1; # autoflush
+        $| = 1; # autoflush
     
-	print "# robotframework runtime log\n";
+        print "# robotframework runtime log\n";
     
-	my $timestamp = localtime(time);
+        my $timestamp = localtime(time);
 
-	print $timestamp, "\n\n";
+        print $timestamp, "\n\n";
     
-	process_command_line();
+        process_command_line();
 
-	if (defined($help)) {
-	    print_help();
-	}
+        if (defined($help)) {
+            print_help();
+        }
 
-	setup_rf_classpath();
-	setup_java();
-	setup_webdrivers();
-                     
-	print "PATH: $ENV{'PATH'}\n";
-	print "CLASSPATH: $ENV{'CLASSPATH'}\n";
-	print "command: $program @java_args @jython_args\n";
-	print "\n*** robotframework starting now ***\n";
+        setup_rf_classpath();
+        setup_java();
+        setup_webdrivers();
+        
+        print "PATH: $ENV{'PATH'}\n";
+        print "CLASSPATH: $ENV{'CLASSPATH'}\n";
+        print "command: $program @java_props @java_args @jython_args\n";
+        print "\n*** robotframework starting now ***\n";
     };
     
     restore_streams();
     
     if ($@) {
-	die $@;
-    }
-	
+        warn $@, qq(\n);
+        exit 1;
+    }  
 
-    if (system($program, @java_args, @jython_args) != 0) {
-        die "\nERROR: system($program, @java_args, @jython_args) failed: $?";
+    if (system($program, @java_props, @java_args, @jython_args) != 0) {
+        die "\nERROR: system($program, @java_props, @java_args, @jython_args) failed: $?";
     }    
 }
 
@@ -92,7 +94,7 @@ sub process_command_line()
         my $arg = $ARGV[$i];
         
         if ($arg =~ m/^-D/) {
-            push(@java_args, $arg);
+            push(@java_props, $arg);
         } elsif ($arg =~ m/^(-J-classpath|-J-cp)$/) {
             bad_option("Argument expected for -J-classpath option")
                 unless ++$i < @ARGV;
@@ -122,6 +124,7 @@ sub process_command_line()
     print "\n*** parsed arguments ***\n";
     print "\$classpath: $classpath\n"
         if (defined($classpath));
+    print "\@java_props: @java_props\n";
     print "\@java_args: @java_args\n";
     print "\@jython_args: @jython_args\n";
 
@@ -133,7 +136,7 @@ sub process_command_line()
 
 sub setup_rf_classpath()
 {
-    die "Environment variable RF_JAR should be the robotframework jar."
+    die "Environment variable RF_JAR should be the robotframework jar"
         unless (grep(/^RF_JAR$/, keys %ENV) && -e $ENV{'RF_JAR'} && $ENV{'RF_JAR'} =~ m/\brobotframework.*\.jar$/);
     
     if (-f 'pom.xml') {
@@ -174,17 +177,22 @@ sub setup_java()
     add_to_path(\$ENV{'PATH'}, 0, $java_bindir);
 }
 
-sub setup_webdrivers() {
+sub setup_webdrivers() 
+{
     return
         unless (exists $ENV{'KATALON_HOME'});
     
     my $KATALON_HOME = $ENV{'KATALON_HOME'};
-
-    add_to_path(\$ENV{'PATH'},
-                File::Spec->catdir($KATALON_HOME, 'configuration', 'resources', 'drivers', 'chromedriver_win32'),
-                File::Spec->catdir($KATALON_HOME, 'configuration', 'resources', 'drivers', 'edgedriver'),
-                File::Spec->catdir($KATALON_HOME, 'configuration', 'resources', 'drivers', 'firefox_win64'),
-                File::Spec->catdir($KATALON_HOME, 'configuration', 'resources', 'drivers', 'iedriver_win64'));
+    my %webdrivers = ('webdriver.chrome.driver' => File::Spec->catfile($KATALON_HOME, 'configuration', 'resources', 'drivers', 'chromedriver_win32', 'chromedriver.exe'),
+                      'webdriver.edge.driver' => File::Spec->catfile($KATALON_HOME, 'configuration', 'resources', 'drivers', 'edgedriver', 'MicrosoftWebDriver.exe'),
+                      'webdriver.gecko.driver' => File::Spec->catfile($KATALON_HOME, 'configuration', 'resources', 'drivers', 'firefox_win64', 'geckodriver.exe'),
+                      'webdriver.ie.driver' => File::Spec->catfile($KATALON_HOME, 'configuration', 'resources', 'drivers', 'iedriver_win64', 'IEDriverServer.exe'));
+                      
+    for my $webdriver (keys %webdrivers) {
+        printf STDOUT ("%s: %s; exists: %d\n", $webdriver, $webdrivers{$webdriver}, (-f $webdrivers{$webdriver}));
+        push(@java_props, sprintf("-D%s=%s", $webdriver, $webdrivers{$webdriver}))
+            if (-f $webdrivers{$webdriver});
+    }
 }
 
 sub bad_option($)

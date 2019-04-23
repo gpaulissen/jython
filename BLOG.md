@@ -82,7 +82,7 @@ Add the Ant bin directory to environment variable PATH.
 
 Just download it from the Apache site or use one already on the system:
 
-DOS&gt; dir/s/b c:\mvn.bat
+DOS&gt; dir/s/b c:\mvn.cmd
 
 Add the Ant bin directory to environment variable PATH.
 
