@@ -3,9 +3,10 @@
 use strict;
 use warnings;
 use Config;
+use Cwd;
 use File::Basename;
 use File::Spec;
-use Cwd qw(cwd);
+use File::Find;
 
 # PROTOTYPES
 
@@ -14,6 +15,7 @@ sub process_command_line();
 sub setup_rf_classpath();
 sub setup_java();
 sub setup_webdrivers();
+sub find_webdrivers();
 sub bad_option($);
 sub print_help();
 sub restore_streams();
@@ -180,18 +182,29 @@ sub setup_java()
 sub setup_webdrivers() 
 {
     return
-        unless (exists $ENV{'KATALON_HOME'});
+        unless (exists $ENV{'KATALON_HOME'} && -d $ENV{'KATALON_HOME'});
     
-    my $KATALON_HOME = $ENV{'KATALON_HOME'};
-    my %webdrivers = ('webdriver.chrome.driver' => File::Spec->catfile($KATALON_HOME, 'configuration', 'resources', 'drivers', 'chromedriver_win32', 'chromedriver.exe'),
-                      'webdriver.edge.driver' => File::Spec->catfile($KATALON_HOME, 'configuration', 'resources', 'drivers', 'edgedriver', 'MicrosoftWebDriver.exe'),
-                      'webdriver.gecko.driver' => File::Spec->catfile($KATALON_HOME, 'configuration', 'resources', 'drivers', 'firefox_win64', 'geckodriver.exe'),
-                      'webdriver.ie.driver' => File::Spec->catfile($KATALON_HOME, 'configuration', 'resources', 'drivers', 'iedriver_win64', 'IEDriverServer.exe'));
-                      
-    for my $webdriver (keys %webdrivers) {
-        printf STDOUT ("%s: %s; exists: %d\n", $webdriver, $webdrivers{$webdriver}, (-f $webdrivers{$webdriver}));
-        push(@java_props, sprintf("-D%s=%s", $webdriver, $webdrivers{$webdriver}))
-            if (-f $webdrivers{$webdriver});
+    find(\&find_webdrivers, File::Spec->catdir($ENV{'KATALON_HOME'}, 'configuration', 'resources', 'drivers'));
+}
+
+sub find_webdrivers()
+{
+    my $exe = $Config{'_exe'};
+    my $webdriver = undef;
+    
+    if ($_ eq "chromedriver$exe") {
+        $webdriver = 'webdriver.chrome.driver';
+    } elsif ($_ eq "MicrosoftWebDriver$exe") {
+        $webdriver = 'webdriver.edge.driver';
+    } elsif ($_ eq "geckodriver$exe") {
+        $webdriver = 'webdriver.gecko.driver';
+    } elsif ($_ eq "IEDriverServer$exe") {
+        $webdriver = 'webdriver.ie.driver';
+    }
+
+    if (defined($webdriver)) {
+        printf STDOUT ("%s: %s", $webdriver, $File::Find::name);
+        push(@java_props, sprintf("-D%s=%s", $webdriver, $File::Find::name));
     }
 }
 

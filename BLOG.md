@@ -76,7 +76,7 @@ Just download it from the Apache site or use one already on the system:
 
 DOS&gt; dir/s/b c:\ant.bat
 
-Add the Ant bin directory to environment variable PATH.
+Add the Ant bin directory to environment variable PATH: a simple way of doing this is to define ANT\_HOME and add %ANT\_HOME%\bin to PATH.
 
 ## Maven
 
@@ -84,7 +84,7 @@ Just download it from the Apache site or use one already on the system:
 
 DOS&gt; dir/s/b c:\mvn.cmd
 
-Add the Ant bin directory to environment variable PATH.
+Add the Maven bin directory to environment variable PATH: a simple way of doing this is to define MAVEN\_HOME and add %MAVEN\_HOME%\bin to PATH.
 
 ## Java
 
@@ -118,11 +118,9 @@ The Perl Jython executable uses environment variable RF\_JAR and all environment
 
 You need to run at least once an automated test with Maven in order to get all the libraries in the %USERPROFILE%\\.m2\repository directory.
 
-In my case I needed these Java libraries to set via environment variables to run the automated tests in RED:
+In my case I needed just this Java library to run the automated tests in RED:
 
 RF\_JAR=%USERPROFILE%\\.m2\repository\org\robotframework\robotframework\3.0.4\robotframework-3.0.4.jar
-
-RF\_JMSLIBRARY\_JAR=%USERPROFILE%\git\ics-VCCUSTOM-422\icsIntegrationTest\src\test\resources\robotframework\libraries\robotframework-jmslibrary-1.0.0.jar
 
 ## Selenium webdrivers
 
@@ -141,3 +139,15 @@ When everything is ready, you will have a Robot perspective.
 Go to Window -&gt; Preferences -&gt; Robot Framework -&gt; Installed frameworks and let Eclipse discover all the frameworks (normally that starts automatically). Remove all frameworks but the one framework having as Path c:\jython\bin assuming you installed the sources into c:\jython.
 
 Apply and Close and you are ready!
+
+
+# Environment variables
+
+This is a list of environment variables used in this document:
+* https\_proxy
+* PERL\_HOME
+* ANT\_HOME
+* MAVEN\_HOME
+* JAVA\_HOME
+* RF\_JAR
+* RF\_\*\_JAR
