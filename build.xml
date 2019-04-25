@@ -43,6 +43,8 @@ Build a Jython executable for the Robot Framework Editor RED.
     </exec>
     <mkdir dir="${bin.dir}"/>
     <exec executable="${pp}" failonerror="true">
+      <arg value="-C"/>
+      <arg value="--verbose"/>
       <arg value="-o"/>
       <arg value="${bin.dir}/jython${exe.suffix}"/>
       <arg value="jython.pl"/>

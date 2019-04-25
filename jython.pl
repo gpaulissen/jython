@@ -36,14 +36,14 @@ sub main()
     $program = 'java';
     $log_file = File::Spec->catfile(dirname($0), 'jython.log');
 
-    warn "robotframework runtime log: $log_file\n";
+    warn "jython runtime log: $log_file\n";
     
     redirect_streams();
 
     eval {
         $| = 1; # autoflush
     
-        print "# robotframework runtime log\n";
+        print "# jython runtime log\n";
     
         my $timestamp = localtime(time);
 
@@ -201,10 +201,14 @@ sub find_webdrivers()
     } elsif ($_ eq "IEDriverServer$exe") {
         $webdriver = 'webdriver.ie.driver';
     }
-
+        
     if (defined($webdriver)) {
-        printf STDOUT ("%s: %s", $webdriver, $File::Find::name);
-        push(@java_props, sprintf("-D%s=%s", $webdriver, $File::Find::name));
+        my $file = File::Spec->canonpath($File::Find::name);
+        
+        printf STDOUT ("%s: %s\n", $webdriver, $file);
+        
+        push(@java_props, sprintf("-D%s=%s", $webdriver, $file));
+        add_to_path(\$ENV{'PATH'}, 0, File::Spec->canonpath($File::Find::dir));
     }
 }
 
