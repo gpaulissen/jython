@@ -138,9 +138,6 @@ sub process_command_line()
 
 sub setup_rf_classpath()
 {
-    die "Environment variable RF_JAR should be the robotframework jar"
-        unless (grep(/^RF_JAR$/, keys %ENV) && -e $ENV{'RF_JAR'} && $ENV{'RF_JAR'} =~ m/\brobotframework.*\.jar$/);
-    
     if (-f 'pom.xml') {
         my $cp_file = File::Spec->catfile('target', 'classpath.txt');
         
@@ -154,12 +151,15 @@ sub setup_rf_classpath()
         $classpath = <$fh>;
         close $fh;
     } else {
+	die "Environment variable RF_JAR should be the robotframework jar"
+	    unless (grep(/^RF_JAR$/, keys %ENV) && -e $ENV{'RF_JAR'} && $ENV{'RF_JAR'} =~ m/\brobotframework.*\.jar$/);
+    
         $classpath = $ENV{'RF_JAR'};
-    }
 
-    # Add custom libraries not in the Maven classpath, see Maven Robotframework plugin extraPathDirectories
-    foreach my $env (sort(grep(/^RF_(.+)_JAR$/, keys %ENV))) {
-        add_to_path(\$classpath, 1, $ENV{$env});
+	# Add custom libraries not in the Maven classpath, see Maven Robotframework plugin extraPathDirectories
+	foreach my $env (sort(grep(/^RF_(.+)_JAR$/, keys %ENV))) {
+	    add_to_path(\$classpath, 1, $ENV{$env});
+	}
     }
     
     # classpath may be too long for the command line so just define CLASSPATH
